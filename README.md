@@ -1,6 +1,7 @@
 # Emma SOC Automation Lab Toolkit
 
-![CI](https://github.com/EW-TechSec/Emma-soc-automation-lab-toolkit/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/EW-TechSec/Emma-soc-automation-lab-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/EW-TechSec/Emma-soc-automation-lab-toolkit/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white)](https://www.python.org) [![License](https://img.shields.io/github/license/EW-TechSec/Emma-soc-automation-lab-toolkit)](LICENSE) [![Last commit](https://img.shields.io/github/last-commit/EW-TechSec/Emma-soc-automation-lab-toolkit)](https://github.com/EW-TechSec/Emma-soc-automation-lab-toolkit/commits/main)
 
 A hands-on Security Operations lab in Python. It takes raw logs through the same stages a
 SOC uses for an alert, from detection through to an incident report:
@@ -13,6 +14,17 @@ SOC uses for an alert, from detection through to an incident report:
                                    ▲
             MCP server: an AI analyst can call each stage as a tool
 ```
+
+## Built with
+
+| Area | Tools |
+|---|---|
+| Detection engineering | [![Sigma](https://img.shields.io/badge/Sigma-v2%20rules%20%2B%20correlations-1E3A5F)](https://sigmahq.io) [![pySigma](https://img.shields.io/badge/pySigma-2.0-1E3A5F)](https://github.com/SigmaHQ/pySigma) [![MITRE ATT&CK](https://img.shields.io/badge/MITRE%20ATT%26CK-mapped-C8102E)](https://attack.mitre.org) |
+| SIEM and schemas | [![Microsoft Sentinel](https://img.shields.io/badge/Microsoft%20Sentinel-KQL%20%7C%20ASIM-0078D4)](https://learn.microsoft.com/azure/sentinel/normalization) [![Elastic Common Schema](https://img.shields.io/badge/Elastic%20Common%20Schema-ECS-005571?logo=elastic&logoColor=white)](https://www.elastic.co/guide/en/ecs/current/index.html) |
+| Language | [![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white)](https://www.python.org) [![YAML](https://img.shields.io/badge/YAML-rules-CB171E?logo=yaml&logoColor=white)](https://yaml.org) |
+| Testing | [![pytest](https://img.shields.io/badge/pytest-tested-0A9EDC?logo=pytest&logoColor=white)](https://docs.pytest.org) [![Hypothesis](https://img.shields.io/badge/Hypothesis-fuzzing-2D2D2D?logo=hypothesis&logoColor=white)](https://hypothesis.readthedocs.io) |
+| Code quality and security | [![Ruff](https://img.shields.io/badge/Ruff-lint%20%2B%20format-D7FF64?logo=ruff&logoColor=black)](https://docs.astral.sh/ruff) [![mypy](https://img.shields.io/badge/mypy-type%20checked-2A6DB2)](https://mypy-lang.org) [![Bandit](https://img.shields.io/badge/Bandit-SAST-FFC107)](https://bandit.readthedocs.io) [![pip-audit](https://img.shields.io/badge/pip--audit-CVE%20scan-3775A9?logo=pypi&logoColor=white)](https://github.com/pypa/pip-audit) |
+| CI/CD | [![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI-2088FF?logo=githubactions&logoColor=white)](https://docs.github.com/actions) |
 
 ## What this project demonstrates
 
