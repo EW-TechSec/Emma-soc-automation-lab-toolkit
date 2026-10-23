@@ -29,14 +29,13 @@ SOC uses for an alert, from detection through to an incident report:
 | ML anomaly detection with honest evaluation | `ml/` *(Phase 5)* |
 | SOC dashboard and ATT&CK coverage heatmap | `dashboard/` *(Phase 6)* |
 | AI-assisted triage over MCP with human-in-the-loop guardrails | `mcp_server/` *(Phase 7)* |
-| CI/CD, testing, secure coding (ruff, bandit, pytest) | `.github/workflows/` |
+| CI/CD and secure development: tests, fuzzing, type checks, SAST, dependency CVE audit, SHA-pinned actions | `.github/workflows/`, `tests/` |
 
 ## Quick start
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env        # optional: add free API keys, otherwise mocks are used
 pytest
 
 # generate a day of lab logs with planted attacks (port scan, SSH brute force, password spray)
@@ -55,8 +54,9 @@ python -m soclab.detections.evaluation --seeds 50
 python -m soclab.kql
 ```
 
-No API keys are needed. Without them, enrichment replays recorded real API responses.
-See [ADR 0001](docs/decisions/0001-live-vs-mock-threat-intel.md).
+Everything above runs offline with no accounts or API keys. Threat-intel enrichment
+(Phase 3) will use free AbuseIPDB, VirusTotal and OTX keys when present and recorded real
+responses otherwise ([ADR 0001](docs/decisions/0001-live-vs-mock-threat-intel.md)).
 
 ## Detections
 
@@ -146,21 +146,29 @@ Every push runs these gates in CI (Python 3.11 and 3.12):
 
 ## Safety
 
-Response actions (blocking IPs, isolating hosts) run in **dry-run mode by default**.
-They only log what they would do. Executing them requires an explicit `SOCLAB_DRY_RUN=false`.
-All attack simulation runs against containers in a local lab, never against third-party systems.
+- **Dry-run by default:** the configuration already enforces it (and a test guards it), so the
+  response playbooks planned for Phase 4 (blocking IPs, isolating hosts) will only log what
+  they would do unless `SOCLAB_DRY_RUN=false` is set explicitly.
+- **No real targets:** attacks are simulated as log files, and attacker addresses come only from
+  IP ranges reserved for documentation (RFC 5737). The live attack lab planned for Phase 8 runs
+  only between local containers on an isolated network.
+- **Untrusted input:** log content is treated as attacker-controlled: injection-resistant
+  parsing, path traversal guard, and fuzz and denial-of-service tests.
 
 ## Roadmap
 
 - [x] Phase 0: Project skeleton, CI, configuration
 - [x] Phase 1: Common log schema, parsers, synthetic attack-data generator
-- [ ] Phase 2: Detection engine, Sigma rules, ATT&CK mapping, detection tests
+- [x] Phase 2: Sigma rules with correlations and ATT&CK mapping, detection engine, measured
+      detection quality and tuning, incident grouping, KQL for Microsoft Sentinel
+- [x] Quality and security pass: fuzzing, ReDoS and load tests, type checking, dependency
+      audit, six bugs found and fixed
 - [ ] Phase 3: Threat-intel enrichment and triage scoring
 - [ ] Phase 4: Response playbooks and incident reports
 - [ ] Phase 5: ML anomaly detection
 - [ ] Phase 6: Streamlit SOC dashboard (live demo)
 - [ ] Phase 7: MCP server for AI-assisted triage
-- [ ] Phase 8: Case studies and demo
+- [ ] Phase 8: Live Docker attack lab, public dataset replay, case studies and demo
 
 ## License
 
