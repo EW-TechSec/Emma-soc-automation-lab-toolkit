@@ -19,7 +19,8 @@ SOC uses for an alert, from detection through to an incident report:
 | Skill | Where |
 |---|---|
 | Detection engineering (Sigma rules, MITRE ATT&CK mapping, detection-as-code tests) | `detections/` *(Phase 2)* |
-| Log parsing and normalization | `ingest/` *(Phase 1)* |
+| Log parsing and normalization to Elastic Common Schema, log-injection-resistant parsing | `ingest/`, `schema.py` |
+| Labelled attack simulation (T1046, T1110.001, T1110.003) with benign noise | `simulate/` |
 | Threat-intel enrichment (AbuseIPDB, VirusTotal, OTX), IOC handling, STIX 2.1 | `enrichment/`, `cti/` *(Phase 3)* |
 | Alert triage and risk-based prioritization | `triage/` *(Phase 3)* |
 | SOAR-style response playbooks with safe-by-default dry-run | `response/` *(Phase 4)* |
@@ -35,6 +36,9 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 cp .env.example .env        # optional: add free API keys, otherwise mocks are used
 pytest
+
+# generate a day of lab logs with planted attacks (port scan, SSH brute force, password spray)
+python -m soclab.simulate --out data/generated --seed 42
 ```
 
 No API keys are needed. Without them, enrichment replays recorded real API responses.
@@ -49,7 +53,7 @@ All attack simulation runs against containers in a local lab, never against thir
 ## Roadmap
 
 - [x] Phase 0: Project skeleton, CI, configuration
-- [ ] Phase 1: Common log schema, parsers, synthetic attack-data generator
+- [x] Phase 1: Common log schema, parsers, synthetic attack-data generator
 - [ ] Phase 2: Detection engine, Sigma rules, ATT&CK mapping, detection tests
 - [ ] Phase 3: Threat-intel enrichment and triage scoring
 - [ ] Phase 4: Response playbooks and incident reports
