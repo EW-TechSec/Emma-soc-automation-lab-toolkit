@@ -1,0 +1,31 @@
+title: SSH Brute Force (Correlation Stage)
+id: b7afb988-f165-44bb-822f-5e51cc5020aa
+name: ssh_bruteforce_stage
+status: experimental
+description: |
+  Building block with the same logic as ssh_bruteforce, used only as the first
+  stage of ssh_bruteforce_then_success. It exists because the Sigma spec (and
+  pySigma) silence every rule referenced by a correlation unless generate is
+  true. Referencing ssh_bruteforce directly would silence the stand-alone brute
+  force alert, so a failed brute force would raise nothing. A test keeps this
+  rule's logic identical to ssh_bruteforce.
+references:
+  - https://attack.mitre.org/techniques/T1110/001/
+author: Emma
+date: 2026-10-23
+tags:
+  - attack.credential_access
+  - attack.t1110.001
+correlation:
+  type: event_count
+  rules:
+    - ssh_failed_login
+  group-by:
+    - source.ip
+    - user.name
+  timespan: 5m
+  condition:
+    gte: 10
+falsepositives:
+  - See ssh_bruteforce
+level: high

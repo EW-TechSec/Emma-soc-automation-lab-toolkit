@@ -5,8 +5,8 @@ status: experimental
 description: |
   A brute force against an account, then a successful login to that same
   account from the same source. The guessing worked: the attacker now holds
-  valid credentials. This chains the ssh_bruteforce correlation with a base
-  rule, in order, and is the alert that should wake someone up.
+  valid credentials. This chains the brute force logic (ssh_bruteforce_stage)
+  with a base rule, in order, and is the alert that should wake someone up.
 references:
   - https://attack.mitre.org/techniques/T1110/001/
   - https://attack.mitre.org/techniques/T1078/
@@ -20,7 +20,7 @@ tags:
 correlation:
   type: temporal_ordered
   rules:
-    - ssh_bruteforce
+    - ssh_bruteforce_stage
     - ssh_successful_login
   group-by:
     - source.ip
