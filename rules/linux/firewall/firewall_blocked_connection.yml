@@ -1,0 +1,24 @@
+title: Firewall Blocked Inbound Connection
+id: b07885e2-3eb7-45cf-9e8c-9c052f014374
+name: firewall_blocked_connection
+status: experimental
+description: |
+  An inbound connection blocked by the host firewall (UFW). Internet-facing hosts
+  see these constantly, so it is a building block for the port scan correlation.
+references:
+  - https://attack.mitre.org/techniques/T1046/
+author: Emma
+date: 2026-10-23
+tags:
+  - attack.discovery
+  - attack.t1046
+logsource:
+  product: linux
+  category: firewall
+detection:
+  selection:
+    event.action: firewall_block
+  condition: selection
+falsepositives:
+  - Internet background noise (single probes from many sources)
+level: informational

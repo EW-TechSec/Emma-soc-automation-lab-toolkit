@@ -18,7 +18,7 @@ SOC uses for an alert, from detection through to an incident report:
 
 | Skill | Where |
 |---|---|
-| Detection engineering (Sigma rules, MITRE ATT&CK mapping, detection-as-code tests) | `detections/` *(Phase 2)* |
+| Detection engineering: Sigma v2 rules incl. correlations, MITRE ATT&CK mapping, CI-validated with pySigma | [`rules/`](rules/) |
 | Log parsing and normalization to Elastic Common Schema, log-injection-resistant parsing | `ingest/`, `schema.py` |
 | Labelled attack simulation (T1046, T1110.001, T1110.003) with benign noise | `simulate/` |
 | Threat-intel enrichment (AbuseIPDB, VirusTotal, OTX), IOC handling, STIX 2.1 | `enrichment/`, `cti/` *(Phase 3)* |
@@ -43,6 +43,19 @@ python -m soclab.simulate --out data/generated --seed 42
 
 No API keys are needed. Without them, enrichment replays recorded real API responses.
 See [ADR 0001](docs/decisions/0001-live-vs-mock-threat-intel.md).
+
+## Detections
+
+| Rule | Type | ATT&CK | Level |
+|---|---|---|---|
+| [SSH brute force](rules/linux/sshd/ssh_bruteforce.yml) | event_count: 10+ failures, same source and user, 5 min | T1110.001 | high |
+| [SSH password spray](rules/linux/sshd/ssh_password_spray.yml) | value_count: 10+ distinct users from one source, 30 min | T1110.003 | high |
+| [Brute force then successful login](rules/linux/sshd/ssh_bruteforce_then_success.yml) | temporal_ordered: brute force, then success, 15 min | T1110.001, T1078 | critical |
+| [Port scan](rules/linux/firewall/port_scan.yml) | value_count: 20+ distinct blocked ports from one source, 5 min | T1046 | medium |
+
+Every rule is checked in CI: valid Sigma (pySigma), references resolve, metadata complete,
+ATT&CK-tagged, and every field it uses exists in the event schema, so a typo cannot create
+a rule that silently never fires.
 
 ## Safety
 

@@ -1,0 +1,31 @@
+title: SSH Brute Force Against a Single Account
+id: 075ceee2-9654-4597-a4f3-c28dc1885218
+name: ssh_bruteforce
+status: experimental
+description: |
+  Many failed SSH logins for the same account from the same source in a short
+  window: password guessing. Grouping by user AND source separates it from
+  password spraying (one source, many users).
+  Threshold: 10 failures in 5 minutes. A person who mistypes gives up or
+  succeeds within 2 or 3 tries; fail2ban's default bans after 5 in 10 minutes.
+  10 leaves margin for clumsy users while still catching slow tools.
+references:
+  - https://attack.mitre.org/techniques/T1110/001/
+author: Emma
+date: 2026-10-23
+tags:
+  - attack.credential_access
+  - attack.t1110.001
+correlation:
+  type: event_count
+  rules:
+    - ssh_failed_login
+  group-by:
+    - source.ip
+    - user.name
+  timespan: 5m
+  condition:
+    gte: 10
+falsepositives:
+  - A script or service retrying with an expired password
+level: high

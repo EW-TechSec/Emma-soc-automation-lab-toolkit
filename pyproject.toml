@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
     "python-dotenv>=1.0",
+    "pyyaml>=6.0",
     "requests>=2.31",
 ]
 
@@ -21,6 +22,7 @@ dev = [
     "ruff>=0.6",
     "bandit[toml]>=1.7",
     "responses>=0.25",  # mocks HTTP calls to threat-intel APIs in tests
+    "pysigma>=2.0,<3",  # official Sigma library: validates rules in CI
 ]
 
 [tool.hatch.build.targets.wheel]

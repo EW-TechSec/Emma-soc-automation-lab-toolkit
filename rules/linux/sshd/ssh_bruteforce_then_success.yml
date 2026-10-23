@@ -1,0 +1,31 @@
+title: SSH Brute Force Followed by Successful Login
+id: 7d72cbe4-0ba8-474a-86c3-5574228f0bbc
+name: ssh_bruteforce_then_success
+status: experimental
+description: |
+  A brute force against an account, then a successful login to that same
+  account from the same source. The guessing worked: the attacker now holds
+  valid credentials. This chains the ssh_bruteforce correlation with a base
+  rule, in order, and is the alert that should wake someone up.
+references:
+  - https://attack.mitre.org/techniques/T1110/001/
+  - https://attack.mitre.org/techniques/T1078/
+author: Emma
+date: 2026-10-23
+tags:
+  - attack.credential_access
+  - attack.t1110.001
+  - attack.initial_access
+  - attack.t1078
+correlation:
+  type: temporal_ordered
+  rules:
+    - ssh_bruteforce
+    - ssh_successful_login
+  group-by:
+    - source.ip
+    - user.name
+  timespan: 15m
+falsepositives:
+  - A user who locked themselves out with many retries and then remembered the password
+level: critical

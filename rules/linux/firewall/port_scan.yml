@@ -1,0 +1,29 @@
+title: Port Scan Against a Host
+id: a5aac9cd-57a0-4e98-9b84-f46ba5137486
+name: port_scan
+status: experimental
+description: |
+  One source hitting many DIFFERENT destination ports that the firewall blocks:
+  network service discovery, usually the reconnaissance before an attack.
+  Threshold: 20 distinct ports in 5 minutes. Internet background noise probes a
+  handful of popular ports (23, 445, 3389); a scan walks through many.
+references:
+  - https://attack.mitre.org/techniques/T1046/
+author: Emma
+date: 2026-10-23
+tags:
+  - attack.discovery
+  - attack.t1046
+correlation:
+  type: value_count
+  rules:
+    - firewall_blocked_connection
+  group-by:
+    - source.ip
+  timespan: 5m
+  condition:
+    field: destination.port
+    gte: 20
+falsepositives:
+  - Authorised vulnerability scanners (should be allow-listed)
+level: medium

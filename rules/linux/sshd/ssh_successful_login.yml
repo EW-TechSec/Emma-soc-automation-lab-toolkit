@@ -1,0 +1,25 @@
+title: SSH Successful Login
+id: a32a38cc-08e9-4e31-a823-ca8e84143c6e
+name: ssh_successful_login
+status: experimental
+description: |
+  A successful SSH authentication. Normal on its own; used by the correlation
+  that detects a brute force followed by a successful login from the same source.
+references:
+  - https://attack.mitre.org/techniques/T1078/
+author: Emma
+date: 2026-10-23
+tags:
+  - attack.initial_access
+  - attack.t1078
+logsource:
+  product: linux
+  service: sshd
+detection:
+  selection:
+    event.action: ssh_login
+    event.outcome: success
+  condition: selection
+falsepositives:
+  - Every legitimate login
+level: informational
