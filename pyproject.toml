@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
+    "pysigma>=2.0,<3",  # official Sigma parser: the detection engine and KQL backend build on it
     "python-dotenv>=1.0",
     "pyyaml>=6.0",
     "requests>=2.31",
@@ -22,7 +23,6 @@ dev = [
     "ruff>=0.6",
     "bandit[toml]>=1.7",
     "responses>=0.25",  # mocks HTTP calls to threat-intel APIs in tests
-    "pysigma>=2.0,<3",  # official Sigma library: validates rules in CI
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -42,6 +42,8 @@ select = ["E", "F", "I", "B", "S", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]  # assert is how pytest works
+# pySigma requires attributes named *_token (or_token, and_token, ...): query grammar, not secrets
+"src/soclab/kql.py" = ["S105"]
 
 [tool.bandit]
 exclude_dirs = ["tests"]

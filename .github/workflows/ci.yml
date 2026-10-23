@@ -24,6 +24,8 @@ jobs:
           cache: pip
       - name: Install
         run: pip install -e ".[dev]"
+      - name: Dependency consistency
+        run: pip check  # fails on conflicts, e.g. a package silently downgrading pySigma
       - name: Lint
         run: |
           ruff check .

@@ -1,0 +1,7 @@
+// SSH Brute Force Against a Single Account
+// Generated from rules/linux/sshd/ssh_bruteforce.yml by `python -m soclab.kql`. Do not edit by hand.
+// Level: high | ATT&CK: T1110.001 | Schema: Microsoft Sentinel ASIM
+imAuthentication
+| where EventType =~ "Logon" and EventResult =~ "Failure" and not(TargetUsername =~ "svc_backup" and ipv4_is_in_range(SrcIpAddr, "10.20.0.0/24"))
+| summarize EventCount = count() by bin(TimeGenerated, 5m), SrcIpAddr, TargetUsername
+| where EventCount >= 10

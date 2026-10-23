@@ -22,6 +22,7 @@ SOC uses for an alert, from detection through to an incident report:
 | Log parsing and normalization to Elastic Common Schema, log-injection-resistant parsing | `ingest/`, `schema.py` |
 | Labelled attack simulation (T1046, T1110.001, T1110.003) with benign noise | `simulate/` |
 | Alert grouping into incidents with ATT&CK timeline and severity escalation | `detections/incidents.py` |
+| Microsoft Sentinel KQL from the same rules: custom pySigma backend, ECS to ASIM mapping | [`kql/`](kql/), `kql.py` |
 | Threat-intel enrichment (AbuseIPDB, VirusTotal, OTX), IOC handling, STIX 2.1 | `enrichment/`, `cti/` *(Phase 3)* |
 | Alert triage and risk-based prioritization | `triage/` *(Phase 3)* |
 | SOAR-style response playbooks with safe-by-default dry-run | `response/` *(Phase 4)* |
@@ -49,6 +50,9 @@ python -m soclab.detections --logs data/generated --year 2026 --incidents
 
 # score the rules against ground truth over 50 varied simulated days
 python -m soclab.detections.evaluation --seeds 50
+
+# convert the rules to KQL for Microsoft Sentinel (ASIM)
+python -m soclab.kql
 ```
 
 No API keys are needed. Without them, enrichment replays recorded real API responses.
@@ -67,6 +71,23 @@ Rules run in a small engine built on pySigma's parser
 ([ADR 0003](docs/decisions/0003-detection-engine-on-pysigma.md)): sliding-window correlations,
 one alert per attack burst, and Sigma's `generate` semantics. On the generated lab day it raises
 4 alerts covering all 3 planted attacks, with no alerts from staff typos or internet noise.
+
+### Same rules, Microsoft Sentinel
+
+The Sigma rules are converted to KQL against Sentinel's ASIM normalized schema with a custom
+pySigma backend and field mapping ([ADR 0005](docs/decisions/0005-kql-backend-for-sentinel.md)).
+Generated queries live in [`kql/`](kql/), and CI fails if they drift from the rules:
+
+```kusto
+imAuthentication
+| where EventType =~ "Logon" and EventResult =~ "Failure" and not(TargetUsername =~ "svc_backup" and ipv4_is_in_range(SrcIpAddr, "10.20.0.0/24"))
+| summarize EventCount = count() by bin(TimeGenerated, 5m), SrcIpAddr, TargetUsername
+| where EventCount >= 10
+```
+
+Known difference: KQL `bin()` uses fixed windows while the Python engine slides, so a burst
+straddling a window edge can be missed in KQL; a test pins this case. The queries are tested
+as text and not yet executed against a live workspace.
 
 ### From alerts to incidents
 

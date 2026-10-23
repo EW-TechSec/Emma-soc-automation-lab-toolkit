@@ -1,0 +1,14 @@
+// SSH Brute Force Followed by Successful Login
+// Generated from rules/linux/sshd/ssh_bruteforce_then_success.yml by `python -m soclab.kql`. Do not edit by hand.
+// Level: critical | ATT&CK: T1110.001, T1078 | Schema: Microsoft Sentinel ASIM
+union
+(imAuthentication
+| where EventType =~ "Logon" and EventResult =~ "Failure" and not(TargetUsername =~ "svc_backup" and ipv4_is_in_range(SrcIpAddr, "10.20.0.0/24"))
+| summarize EventCount = count() by bin(TimeGenerated, 5m), SrcIpAddr, TargetUsername
+| where EventCount >= 10
+| extend EventRule = "ssh_bruteforce_stage"),
+(imAuthentication
+| where EventType =~ "Logon" and EventResult =~ "Success"
+| extend EventRule = "ssh_successful_login")
+| summarize T0 = minif(TimeGenerated, EventRule == "ssh_bruteforce_stage"), T1 = maxif(TimeGenerated, EventRule == "ssh_successful_login") by bin(TimeGenerated, 15m), SrcIpAddr, TargetUsername
+| where T0 <= T1

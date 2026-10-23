@@ -1,0 +1,7 @@
+// Port Scan Against a Host
+// Generated from rules/linux/firewall/port_scan.yml by `python -m soclab.kql`. Do not edit by hand.
+// Level: medium | ATT&CK: T1046 | Schema: Microsoft Sentinel ASIM
+imNetworkSession
+| where DvcAction =~ "Deny"
+| summarize ValueCount = dcount(DstPortNumber) by bin(TimeGenerated, 5m), SrcIpAddr
+| where ValueCount >= 20
