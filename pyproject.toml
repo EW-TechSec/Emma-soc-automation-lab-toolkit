@@ -23,6 +23,11 @@ dev = [
     "ruff>=0.6",
     "bandit[toml]>=1.7",
     "responses>=0.25",  # mocks HTTP calls to threat-intel APIs in tests
+    "hypothesis>=6.100",  # property-based tests (fuzzing) for parsers, paths and the engine
+    "mypy>=1.10",
+    "types-PyYAML",
+    "types-requests",
+    "pip-audit>=2.7",  # known-vulnerability scan of dependencies
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -44,6 +49,10 @@ select = ["E", "F", "I", "B", "S", "UP"]
 "tests/*" = ["S101"]  # assert is how pytest works
 # pySigma requires attributes named *_token (or_token, and_token, ...): query grammar, not secrets
 "src/soclab/kql.py" = ["S105"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
 
 [tool.bandit]
 exclude_dirs = ["tests"]

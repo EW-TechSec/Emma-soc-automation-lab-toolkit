@@ -130,6 +130,20 @@ a rule that silently never fires. Every alerting rule also ships with a true pos
 boundary-case true negative log in [`tests/fixtures/detections/`](tests/fixtures/detections/),
 and CI fails if measured precision or recall regresses.
 
+## Quality and security checks
+
+Every push runs these gates in CI (Python 3.11 and 3.12):
+
+| Gate | What it catches |
+|---|---|
+| `pip check` | Dependency conflicts, e.g. a package silently downgrading pySigma |
+| ruff, mypy | Lint errors and type bugs |
+| bandit | Insecure code patterns |
+| pip-audit | Known vulnerabilities in dependencies ([one accepted, unreachable finding](docs/decisions/0006-accepted-risk-diskcache.md), guarded by a test) |
+| pytest, 98% coverage | Unit, rule, detection-quality, CLI and regression tests |
+| Hypothesis fuzzing | Parsers never crash, a crafted username cannot spoof the source IP, `safe_path()` never escapes its base |
+| Performance tests | No regex denial of service on megabyte log lines; the engine stays linear under a 40,000-packet scan flood |
+
 ## Safety
 
 Response actions (blocking IPs, isolating hosts) run in **dry-run mode by default**.

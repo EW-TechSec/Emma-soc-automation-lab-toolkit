@@ -95,7 +95,7 @@ def test_parse_lines_counts_instead_of_crashing():
 
 
 def test_unknown_source_rejected():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unknown log source"):
         parse_lines([], "windows_evtx")
 
 

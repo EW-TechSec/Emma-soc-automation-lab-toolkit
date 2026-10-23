@@ -41,5 +41,5 @@ def test_dry_run_can_be_disabled_explicitly(monkeypatch):
 
 
 def test_unknown_provider_rejected():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unknown threat-intel provider"):
         load_settings(env_file=None).intel_mode("shodan")
