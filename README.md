@@ -42,6 +42,9 @@ python -m soclab.simulate --out data/generated --seed 42
 
 # run every Sigma rule over those logs
 python -m soclab.detections --logs data/generated --year 2026
+
+# score the rules against ground truth over 50 varied simulated days
+python -m soclab.detections.evaluation --seeds 50
 ```
 
 No API keys are needed. Without them, enrichment replays recorded real API responses.
@@ -61,9 +64,28 @@ Rules run in a small engine built on pySigma's parser
 one alert per attack burst, and Sigma's `generate` semantics. On the generated lab day it raises
 4 alerts covering all 3 planted attacks, with no alerts from staff typos or internet noise.
 
+### Measured detection quality
+
+Scored against ground truth over 50 simulated days of varied attacks, evasions and benign
+look-alikes ([full report](docs/detection-quality.md)):
+
+| Rule | Precision | Recall | Median time to detect |
+|---|---|---|---|
+| Port scan | 1.00 | 0.88 | 4 s |
+| SSH brute force | 1.00 | 0.75 | 44 s |
+| Brute force then successful login | 1.00 | 1.00 | 251 s |
+| Password spray | 1.00 | 1.00 | 558 s |
+
+The gaps are known and tested rather than hidden: scans under 20 ports and low-and-slow
+brute force (one guess a minute) are missed. Brute force precision started at 0.61 because
+of a backup job retrying an expired password; a scoped exclusion fixed it with no loss of
+detections. Precision only covers the benign activity the lab simulates.
+
 Every rule is checked in CI: valid Sigma (pySigma), references resolve, metadata complete,
 ATT&CK-tagged, and every field it uses exists in the event schema, so a typo cannot create
-a rule that silently never fires.
+a rule that silently never fires. Every alerting rule also ships with a true positive and a
+boundary-case true negative log in [`tests/fixtures/detections/`](tests/fixtures/detections/),
+and CI fails if measured precision or recall regresses.
 
 ## Safety
 

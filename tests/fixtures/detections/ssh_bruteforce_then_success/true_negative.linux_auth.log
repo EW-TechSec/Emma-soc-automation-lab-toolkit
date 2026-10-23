@@ -1,0 +1,16 @@
+# brute force followed by: success for a DIFFERENT user, and success for admin
+# from the same IP but long after the 15 minute window
+Oct 20 09:00:00 web01 sshd[2560]: Failed password for admin from 203.0.113.66 port 42560 ssh2
+Oct 20 09:00:03 web01 sshd[2567]: Failed password for admin from 203.0.113.66 port 42567 ssh2
+Oct 20 09:00:06 web01 sshd[2574]: Failed password for admin from 203.0.113.66 port 42574 ssh2
+Oct 20 09:00:09 web01 sshd[2581]: Failed password for admin from 203.0.113.66 port 42581 ssh2
+Oct 20 09:00:12 web01 sshd[2588]: Failed password for admin from 203.0.113.66 port 42588 ssh2
+Oct 20 09:00:15 web01 sshd[2595]: Failed password for admin from 203.0.113.66 port 42595 ssh2
+Oct 20 09:00:18 web01 sshd[2602]: Failed password for admin from 203.0.113.66 port 42602 ssh2
+Oct 20 09:00:21 web01 sshd[2609]: Failed password for admin from 203.0.113.66 port 42609 ssh2
+Oct 20 09:00:24 web01 sshd[2616]: Failed password for admin from 203.0.113.66 port 42616 ssh2
+Oct 20 09:00:27 web01 sshd[2623]: Failed password for admin from 203.0.113.66 port 42623 ssh2
+Oct 20 09:00:30 web01 sshd[2630]: Failed password for admin from 203.0.113.66 port 42630 ssh2
+Oct 20 09:00:33 web01 sshd[2637]: Failed password for admin from 203.0.113.66 port 42637 ssh2
+Oct 20 09:00:40 web01 sshd[2644]: Accepted password for alice from 203.0.113.66 port 42644 ssh2
+Oct 20 10:00:00 web01 sshd[2651]: Accepted password for admin from 203.0.113.66 port 42651 ssh2

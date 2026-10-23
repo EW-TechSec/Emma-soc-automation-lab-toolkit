@@ -1,0 +1,11 @@
+# 10 failures for admin from one IP within 30 s: exactly at the threshold
+Oct 20 09:00:00 web01 sshd[2007]: Failed password for admin from 203.0.113.66 port 42007 ssh2
+Oct 20 09:00:03 web01 sshd[2014]: Failed password for admin from 203.0.113.66 port 42014 ssh2
+Oct 20 09:00:06 web01 sshd[2021]: Failed password for admin from 203.0.113.66 port 42021 ssh2
+Oct 20 09:00:09 web01 sshd[2028]: Failed password for admin from 203.0.113.66 port 42028 ssh2
+Oct 20 09:00:12 web01 sshd[2035]: Failed password for admin from 203.0.113.66 port 42035 ssh2
+Oct 20 09:00:15 web01 sshd[2042]: Failed password for admin from 203.0.113.66 port 42042 ssh2
+Oct 20 09:00:18 web01 sshd[2049]: Failed password for admin from 203.0.113.66 port 42049 ssh2
+Oct 20 09:00:21 web01 sshd[2056]: Failed password for admin from 203.0.113.66 port 42056 ssh2
+Oct 20 09:00:24 web01 sshd[2063]: Failed password for admin from 203.0.113.66 port 42063 ssh2
+Oct 20 09:00:27 web01 sshd[2070]: Failed password for admin from 203.0.113.66 port 42070 ssh2

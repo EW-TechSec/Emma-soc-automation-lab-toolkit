@@ -34,6 +34,8 @@ class GroundTruth:
     end: str
     event_count: int
     notes: str = ""
+    malicious: bool = True  # False marks benign activity that is expected to look suspicious
+    compromised: bool = False  # True when the attack ended with valid access (T1078)
 
 
 @dataclass
@@ -116,11 +118,13 @@ class _Generator:
         user="admin",
         attempts=60,
         succeed=True,
+        delay=(1, 4),
+        scenario="ssh_bruteforce",
     ) -> None:
         ts = self._at(at_min)
         first = ts
         for _ in range(attempts):
-            ts += timedelta(seconds=self.rng.uniform(1, 4))
+            ts += timedelta(seconds=self.rng.uniform(*delay))
             self._login(ts, host, user, ip, ok=False)
         count = attempts
         if succeed:
@@ -129,7 +133,7 @@ class _Generator:
             count += 1
         self.ds.ground_truth.append(
             GroundTruth(
-                scenario="ssh_bruteforce",
+                scenario=scenario,
                 mitre_technique="T1110.001",
                 source_ip=ip,
                 target_host=host,
@@ -137,14 +141,18 @@ class _Generator:
                 end=ts.isoformat(),
                 event_count=count,
                 notes="ends in a successful login (T1078 Valid Accounts)" if succeed else "",
+                compromised=succeed,
             )
         )
 
-    def password_spray(self, at_min: float, ip="198.51.100.77", host="bastion01") -> None:
+    def password_spray(
+        self, at_min: float, ip="198.51.100.77", host="bastion01", users=None, delay=(20, 60)
+    ) -> None:
+        users = SPRAY_USERS if users is None else users
         ts = self._at(at_min)
         first = ts
-        for user in SPRAY_USERS:  # one password, many users, slow to dodge lockouts
-            ts += timedelta(seconds=self.rng.uniform(20, 60))
+        for user in users:  # one password, many users, slow to dodge lockouts
+            ts += timedelta(seconds=self.rng.uniform(*delay))
             self._login(ts, host, user, ip, ok=False, known_user=user in STAFF)
         self.ds.ground_truth.append(
             GroundTruth(
@@ -154,7 +162,7 @@ class _Generator:
                 target_host=host,
                 start=first.isoformat(),
                 end=ts.isoformat(),
-                event_count=len(SPRAY_USERS),
+                event_count=len(users),
             )
         )
 
@@ -176,14 +184,78 @@ class _Generator:
             )
         )
 
+    # ---- benign but suspicious-looking --------------------------------------
 
-def generate(seed: int = 42, start: datetime | None = None, hours: int = 24) -> Dataset:
+    def service_account_retry(self, at_min: float, ip="10.20.0.15", host="web01") -> None:
+        """A backup job with an expired password retrying. Not an attack, but it looks like one."""
+        ts = self._at(at_min)
+        first = ts
+        attempts = self.rng.randint(12, 20)
+        for _ in range(attempts):
+            ts += timedelta(seconds=self.rng.uniform(10, 20))
+            self._login(ts, host, "svc_backup", ip, ok=False)
+        self.ds.ground_truth.append(
+            GroundTruth(
+                scenario="service_account_retry",
+                mitre_technique="",
+                source_ip=ip,
+                target_host=host,
+                start=first.isoformat(),
+                end=ts.isoformat(),
+                event_count=attempts,
+                notes="benign: stale credentials in an automated job",
+                malicious=False,
+            )
+        )
+
+    # ---- varied scenario mix for evaluation -----------------------------------
+
+    def varied_scenarios(self, hours: int) -> None:
+        """Random attacks (size, pace, timing) plus evasions and benign look-alikes."""
+        rng = self.rng
+        pool = [f"203.0.113.{i}" for i in range(1, 255)] + [
+            f"198.51.100.{i}" for i in range(1, 255)
+        ]
+        ips = iter(rng.sample(pool, 10))  # distinct attacker per scenario
+        hosts = list(HOSTS)
+
+        def when() -> float:
+            return rng.uniform(0, hours * 60 - 60)
+
+        if rng.random() < 0.8:  # size varies; small scans fall below the 20-port threshold
+            self.port_scan(when(), ip=next(ips), host=rng.choice(hosts), ports=rng.randint(10, 150))
+        if rng.random() < 0.9:  # pace and length vary; about half end in a successful login
+            self.ssh_bruteforce(
+                when(), ip=next(ips), host=rng.choice(hosts), user=rng.choice(["admin", "root"]),
+                attempts=rng.randint(15, 80), succeed=rng.random() < 0.5, delay=(1, 8),
+            )  # fmt: skip
+        if rng.random() < 0.7:
+            users = rng.sample(SPRAY_USERS, rng.randint(10, len(SPRAY_USERS)))
+            self.password_spray(
+                when(), ip=next(ips), host=rng.choice(hosts), users=users, delay=(20, 90)
+            )
+        if rng.random() < 0.3:  # evasion: one guess a minute, below any 5-minute window
+            self.ssh_bruteforce(
+                when(), ip=next(ips), host=rng.choice(hosts), user="root", attempts=30,
+                succeed=False, delay=(50, 90), scenario="slow_bruteforce",
+            )  # fmt: skip
+        if rng.random() < 0.4:
+            self.service_account_retry(when())
+
+
+def generate(
+    seed: int = 42, start: datetime | None = None, hours: int = 24, varied: bool = False
+) -> Dataset:
+    """Default: the fixed demo day. varied=True: a random scenario mix for evaluation."""
     start = start or datetime(2026, 10, 20, 7, 0, tzinfo=UTC)
     g = _Generator(seed, start)
     g.normal_activity(hours)
-    g.port_scan(at_min=95)  # recon first...
-    g.ssh_bruteforce(at_min=140)  # ...then credential attacks
-    g.password_spray(at_min=330)
+    if varied:
+        g.varied_scenarios(hours)
+    else:
+        g.port_scan(at_min=95)  # recon first...
+        g.ssh_bruteforce(at_min=140)  # ...then credential attacks
+        g.password_spray(at_min=330)
     g.ds.auth_lines.sort(key=lambda x: x[0])
     g.ds.ufw_lines.sort(key=lambda x: x[0])
     return g.ds

@@ -1,0 +1,29 @@
+# 9 failures (one below threshold), staff typo then success,
+# and the excluded backup job retrying from its own subnet
+Oct 20 09:00:00 web01 sshd[2077]: Failed password for admin from 203.0.113.66 port 42077 ssh2
+Oct 20 09:00:03 web01 sshd[2084]: Failed password for admin from 203.0.113.66 port 42084 ssh2
+Oct 20 09:00:06 web01 sshd[2091]: Failed password for admin from 203.0.113.66 port 42091 ssh2
+Oct 20 09:00:09 web01 sshd[2098]: Failed password for admin from 203.0.113.66 port 42098 ssh2
+Oct 20 09:00:12 web01 sshd[2105]: Failed password for admin from 203.0.113.66 port 42105 ssh2
+Oct 20 09:00:15 web01 sshd[2112]: Failed password for admin from 203.0.113.66 port 42112 ssh2
+Oct 20 09:00:18 web01 sshd[2119]: Failed password for admin from 203.0.113.66 port 42119 ssh2
+Oct 20 09:00:21 web01 sshd[2126]: Failed password for admin from 203.0.113.66 port 42126 ssh2
+Oct 20 09:00:24 web01 sshd[2133]: Failed password for admin from 203.0.113.66 port 42133 ssh2
+Oct 20 09:01:40 web01 sshd[2140]: Failed password for alice from 10.10.0.20 port 42140 ssh2
+Oct 20 09:01:46 web01 sshd[2147]: Failed password for alice from 10.10.0.20 port 42147 ssh2
+Oct 20 09:02:06 web01 sshd[2154]: Accepted password for alice from 10.10.0.20 port 42154 ssh2
+Oct 20 09:03:20 web01 sshd[2161]: Failed password for svc_backup from 10.20.0.15 port 42161 ssh2
+Oct 20 09:03:32 web01 sshd[2168]: Failed password for svc_backup from 10.20.0.15 port 42168 ssh2
+Oct 20 09:03:44 web01 sshd[2175]: Failed password for svc_backup from 10.20.0.15 port 42175 ssh2
+Oct 20 09:03:56 web01 sshd[2182]: Failed password for svc_backup from 10.20.0.15 port 42182 ssh2
+Oct 20 09:04:08 web01 sshd[2189]: Failed password for svc_backup from 10.20.0.15 port 42189 ssh2
+Oct 20 09:04:20 web01 sshd[2196]: Failed password for svc_backup from 10.20.0.15 port 42196 ssh2
+Oct 20 09:04:32 web01 sshd[2203]: Failed password for svc_backup from 10.20.0.15 port 42203 ssh2
+Oct 20 09:04:44 web01 sshd[2210]: Failed password for svc_backup from 10.20.0.15 port 42210 ssh2
+Oct 20 09:04:56 web01 sshd[2217]: Failed password for svc_backup from 10.20.0.15 port 42217 ssh2
+Oct 20 09:05:08 web01 sshd[2224]: Failed password for svc_backup from 10.20.0.15 port 42224 ssh2
+Oct 20 09:05:20 web01 sshd[2231]: Failed password for svc_backup from 10.20.0.15 port 42231 ssh2
+Oct 20 09:05:32 web01 sshd[2238]: Failed password for svc_backup from 10.20.0.15 port 42238 ssh2
+Oct 20 09:05:44 web01 sshd[2245]: Failed password for svc_backup from 10.20.0.15 port 42245 ssh2
+Oct 20 09:05:56 web01 sshd[2252]: Failed password for svc_backup from 10.20.0.15 port 42252 ssh2
+Oct 20 09:06:08 web01 sshd[2259]: Failed password for svc_backup from 10.20.0.15 port 42259 ssh2

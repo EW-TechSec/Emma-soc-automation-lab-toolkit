@@ -1,0 +1,14 @@
+# brute force on admin, then a successful login as admin from the same IP
+Oct 20 09:00:00 web01 sshd[2469]: Failed password for admin from 203.0.113.66 port 42469 ssh2
+Oct 20 09:00:03 web01 sshd[2476]: Failed password for admin from 203.0.113.66 port 42476 ssh2
+Oct 20 09:00:06 web01 sshd[2483]: Failed password for admin from 203.0.113.66 port 42483 ssh2
+Oct 20 09:00:09 web01 sshd[2490]: Failed password for admin from 203.0.113.66 port 42490 ssh2
+Oct 20 09:00:12 web01 sshd[2497]: Failed password for admin from 203.0.113.66 port 42497 ssh2
+Oct 20 09:00:15 web01 sshd[2504]: Failed password for admin from 203.0.113.66 port 42504 ssh2
+Oct 20 09:00:18 web01 sshd[2511]: Failed password for admin from 203.0.113.66 port 42511 ssh2
+Oct 20 09:00:21 web01 sshd[2518]: Failed password for admin from 203.0.113.66 port 42518 ssh2
+Oct 20 09:00:24 web01 sshd[2525]: Failed password for admin from 203.0.113.66 port 42525 ssh2
+Oct 20 09:00:27 web01 sshd[2532]: Failed password for admin from 203.0.113.66 port 42532 ssh2
+Oct 20 09:00:30 web01 sshd[2539]: Failed password for admin from 203.0.113.66 port 42539 ssh2
+Oct 20 09:00:33 web01 sshd[2546]: Failed password for admin from 203.0.113.66 port 42546 ssh2
+Oct 20 09:00:40 web01 sshd[2553]: Accepted password for admin from 203.0.113.66 port 42553 ssh2

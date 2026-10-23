@@ -6,6 +6,12 @@ description: |
   A single failed SSH authentication. On its own this is normal (users mistype
   passwords), so it is a building block for the brute force and password spray
   correlation rules rather than an alert.
+  Exclusion (2026-10-23): the svc_backup job retries an expired password from its
+  backup subnet and caused every brute force false positive in evaluation
+  (precision 0.61). The filter is scoped to that user AND that subnet only, so an
+  outside attacker guessing svc_backup is still counted. Risk accepted: guessing
+  from inside 10.20.0.0/24 against svc_backup is not counted. Root cause fix is
+  to rotate the job's credential; review this exclusion when that is done.
 references:
   - https://attack.mitre.org/techniques/T1110/
 author: Emma
@@ -20,7 +26,10 @@ detection:
   selection:
     event.action: ssh_login
     event.outcome: failure
-  condition: selection
+  filter_backup_service_account:
+    user.name: svc_backup
+    source.ip|cidr: 10.20.0.0/24
+  condition: selection and not filter_backup_service_account
 falsepositives:
   - Users mistyping their password
   - Misconfigured automation with stale credentials
