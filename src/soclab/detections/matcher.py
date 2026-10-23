@@ -35,6 +35,7 @@ from sigma.types import (
     SigmaString,
 )
 
+from soclab.detections.models import rule_key
 from soclab.schema import Event
 
 # Our log sources expressed as Sigma logsource attributes.
@@ -83,7 +84,7 @@ class RuleMatcher:
         self.rule = rule
         conditions = rule.detection.parsed_condition
         if len(conditions) != 1:
-            raise UnsupportedRuleError(f"{rule.name}: exactly one condition is supported")
+            raise UnsupportedRuleError(f"{rule_key(rule)}: exactly one condition is supported")
         self.tree = conditions[0].parse()
         self._regex: dict[int, re.Pattern[str]] = {}
         self._validate(self.tree)
@@ -101,12 +102,12 @@ class RuleMatcher:
         for node in self._nodes(tree):
             if not isinstance(node, known):
                 raise UnsupportedRuleError(
-                    f"{self.rule.name}: unsupported node {type(node).__name__}"
+                    f"{rule_key(self.rule)}: unsupported node {type(node).__name__}"
                 )
             value = getattr(node, "value", None)
             if value is not None and not isinstance(value, _SUPPORTED_VALUES):
                 raise UnsupportedRuleError(
-                    f"{self.rule.name}: unsupported value type {type(value).__name__}"
+                    f"{rule_key(self.rule)}: unsupported value type {type(value).__name__}"
                 )
 
     # -- evaluation -------------------------------------------------------

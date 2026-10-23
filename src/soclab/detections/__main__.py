@@ -12,7 +12,9 @@ LOG_FILES = {"auth.log": "linux_auth", "ufw.log": "ufw"}
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Run Sigma detections over lab logs.")
+    ap = argparse.ArgumentParser(
+        prog="python -m soclab.detections", description="Run Sigma detections over lab logs."
+    )
     ap.add_argument("--logs", default="data/generated", help="directory with auth.log / ufw.log")
     ap.add_argument("--rules", default="rules", help="directory with Sigma rules")
     ap.add_argument("--year", type=int, default=None, help="year for legacy syslog timestamps")
@@ -20,14 +22,21 @@ def main() -> None:
     ap.add_argument("--json", help="also write alerts (or incidents) to this JSON file")
     args = ap.parse_args()
 
-    events = []
-    for name, source in LOG_FILES.items():
-        if (Path(args.logs) / name).exists():
-            result = load_log(args.logs, name, source, args.year)
-            events += result.events
-            print(f"{name}: {len(result.events)} events, {result.malformed} malformed")
+    found = [name for name in LOG_FILES if (Path(args.logs) / name).is_file()]
+    if not found:
+        # "0 alerts" must mean "looked and found nothing", never "could not look".
+        ap.error(f"no log files ({', '.join(LOG_FILES)}) found in {args.logs}")
 
-    engine = DetectionEngine.from_path(args.rules)
+    events = []
+    for name in found:
+        result = load_log(args.logs, name, LOG_FILES[name], args.year)
+        events += result.events
+        print(f"{name}: {len(result.events)} events, {result.malformed} malformed")
+
+    try:
+        engine = DetectionEngine.from_path(args.rules)
+    except (FileNotFoundError, ValueError) as exc:
+        ap.error(str(exc))
     alerts = engine.run(events)
     print(f"\n{len(alerts)} alerts from rules {engine.alerting_rules}\n")
     for a in alerts:

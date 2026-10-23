@@ -18,7 +18,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar
 
-from sigma.collection import SigmaCollection
 from sigma.conditions import ConditionNOT
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.state import ConversionState
@@ -30,7 +29,10 @@ from sigma.processing.transformations import (
     MapStringTransformation,
     SetStateTransformation,
 )
-from sigma.types import SigmaCompareExpression
+from sigma.types import CompareOperators
+
+from soclab.detections.engine import load_rule_collection
+from soclab.detections.models import rule_key
 
 # ASIM parsers (unifying functions) per log source.
 ASIM_TABLES = {
@@ -117,15 +119,15 @@ class KqlBackend(TextQueryBackend):
     case_sensitive_contains_expression: ClassVar[str] = "{field} contains_cs {value}"
     re_expression: ClassVar[str] = '{field} matches regex "{regex}"'
     re_escape_char: ClassVar[str] = "\\"
-    re_escape: ClassVar[tuple[str, ...]] = ('"',)
+    re_escape: ClassVar[list[str]] = ['"']
     cidr_expression: ClassVar[str] = 'ipv4_is_in_range({field}, "{value}")'
     compare_op_expression: ClassVar[str] = "{field} {operator} {value}"
-    compare_operators: ClassVar[dict[SigmaCompareExpression.CompareOperators, str]] = {
-        SigmaCompareExpression.CompareOperators.LT: "<",
-        SigmaCompareExpression.CompareOperators.LTE: "<=",
-        SigmaCompareExpression.CompareOperators.GT: ">",
-        SigmaCompareExpression.CompareOperators.GTE: ">=",
-        SigmaCompareExpression.CompareOperators.NEQ: "!=",
+    compare_operators: ClassVar[dict[CompareOperators, str]] = {
+        CompareOperators.LT: "<",
+        CompareOperators.LTE: "<=",
+        CompareOperators.GT: ">",
+        CompareOperators.GTE: ">=",
+        CompareOperators.NEQ: "!=",
     }
     field_null_expression: ClassVar[str] = "isempty({field})"
     field_exists_expression: ClassVar[str] = "isnotempty({field})"
@@ -176,7 +178,7 @@ class KqlBackend(TextQueryBackend):
     value_count_condition_expression: ClassVar[dict[str, str]] = {
         "default": "| where ValueCount {op} {count}"
     }
-    correlation_condition_mapping: ClassVar[dict[SigmaCorrelationConditionOperator, str]] = {
+    correlation_condition_mapping: ClassVar[dict[SigmaCorrelationConditionOperator, str | None]] = {
         SigmaCorrelationConditionOperator.LT: "<",
         SigmaCorrelationConditionOperator.LTE: "<=",
         SigmaCorrelationConditionOperator.GT: ">",
@@ -206,7 +208,7 @@ class KqlBackend(TextQueryBackend):
         search = self.convert_correlation_search(rule)
         span = self.convert_timespan(rule.timespan, method)
         groupby = self.convert_correlation_aggregation_groupby_from_template(rule.group_by, method)
-        names = [ref.rule.name or str(ref.rule.id) for ref in rule.rules]
+        names = [rule_key(ref.rule) for ref in rule.rules or []]
         last = len(names) - 1
         stages = ", ".join(
             f'T{i} = {"maxif" if i == last else "minif"}(TimeGenerated, EventRule == "{n}")'
@@ -224,9 +226,9 @@ def convert_rules(rules_dir: str | Path = "rules") -> dict[str, str]:
     base rules are converted first and correlations in dependency order (as our engine
     runs them).
     """
-    collection = SigmaCollection.load_ruleset([Path(rules_dir)])
+    collection = load_rule_collection(rules_dir)
     collection.resolve_rule_references()
-    backend = KqlBackend(processing_pipeline=asim_pipeline())
+    backend = KqlBackend(processing_pipeline=asim_pipeline())  # type: ignore[arg-type]  # pySigma typing quirk; runtime OK
     backend.init_processing_pipeline("default")  # what backend.convert() does first
 
     ordered: list = [r for r in collection.rules if not isinstance(r, SigmaCorrelationRule)]
@@ -236,7 +238,7 @@ def convert_rules(rules_dir: str | Path = "rules") -> dict[str, str]:
         if id(rule) in seen or not isinstance(rule, SigmaCorrelationRule):
             return
         seen.add(id(rule))
-        for ref in rule.rules:
+        for ref in rule.rules or []:
             visit(ref.rule)
         ordered.append(rule)
 
@@ -250,7 +252,7 @@ def convert_rules(rules_dir: str | Path = "rules") -> dict[str, str]:
         else:
             queries = backend.convert_rule(rule)
         if rule._output:  # silenced building blocks are not deployed on their own
-            out[rule.name] = "\n".join(str(q) for q in queries)
+            out[rule_key(rule)] = "\n".join(str(q) for q in queries)
     return out
 
 
@@ -267,8 +269,8 @@ def render_file(rule, query: str, source: str) -> str:
 
 
 def write_kql(rules_dir: str | Path = "rules", out_dir: str | Path = "kql") -> list[Path]:
-    collection = SigmaCollection.load_ruleset([Path(rules_dir)])
-    by_name = {r.name: r for r in collection.rules}
+    collection = load_rule_collection(rules_dir)
+    by_name = {rule_key(r): r for r in collection.rules}
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     written = []
@@ -276,8 +278,12 @@ def write_kql(rules_dir: str | Path = "rules", out_dir: str | Path = "kql") -> l
         path = out / f"{name}.kql"
         rule = by_name[name]
         # Path relative to the repo root, whatever directory the command runs from.
-        source = Path(rule.source.path).resolve().relative_to(Path(rules_dir).resolve().parent)
-        path.write_text(render_file(rule, query, source.as_posix()))
+        if rule.source and rule.source.path:
+            src = Path(rule.source.path).resolve().relative_to(Path(rules_dir).resolve().parent)
+            source = src.as_posix()
+        else:
+            source = name
+        path.write_text(render_file(rule, query, source))
         written.append(path)
     return written
 
@@ -285,7 +291,9 @@ def write_kql(rules_dir: str | Path = "rules", out_dir: str | Path = "kql") -> l
 def main() -> None:
     import argparse
 
-    ap = argparse.ArgumentParser(description="Convert Sigma rules to KQL (Sentinel ASIM).")
+    ap = argparse.ArgumentParser(
+        prog="python -m soclab.kql", description="Convert Sigma rules to KQL (Sentinel ASIM)."
+    )
     ap.add_argument("--rules", default="rules")
     ap.add_argument("--out", default="kql")
     args = ap.parse_args()

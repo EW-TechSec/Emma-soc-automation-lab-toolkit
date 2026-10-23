@@ -116,3 +116,29 @@ def test_tumbling_bins_can_split_a_burst_the_engine_catches():
     tumbling = Counter(t.replace(minute=t.minute - t.minute % 5, second=0) for t in times)
     assert "ssh_bruteforce" in sliding
     assert max(tumbling.values()) < 10  # KQL bin() view of the same events: no alert
+
+
+def test_kql_handles_rule_without_name_or_source_file(tmp_path):
+    # Regression: unnamed rules and rules without a source path must not crash conversion.
+    rules = tmp_path / "rules"
+    rules.mkdir()
+    (rules / "unnamed.yml").write_text(
+        "title: Unnamed\nid: 22222222-2222-4222-8222-222222222222\n"
+        "logsource: {product: linux, service: sshd}\n"
+        "detection:\n  sel: {event.outcome: failure}\n  condition: sel\nlevel: low\n"
+    )
+    written = write_kql(rules, tmp_path / "kql")
+    assert [p.name for p in written] == ["22222222-2222-4222-8222-222222222222.kql"]
+    assert 'EventResult =~ "Failure"' in written[0].read_text()
+
+
+@pytest.mark.parametrize("ctype", ["temporal", "value_sum"])
+def test_kql_refuses_unsupported_correlations(ctype):
+    y = (
+        "title: F\nname: f\nlogsource: {product: linux, service: sshd}\n"
+        "detection:\n  sel: {event.outcome: failure}\n  condition: sel\n---\n"
+        f"title: C\nname: c\ncorrelation:\n  type: {ctype}\n  rules: [f]\n"
+        "  group-by: [source.ip]\n  timespan: 5m\n  condition: {field: source.port, gte: 1}\n"
+    )
+    with pytest.raises(NotImplementedError):
+        KqlBackend(processing_pipeline=asim_pipeline()).convert(SigmaCollection.from_yaml(y))

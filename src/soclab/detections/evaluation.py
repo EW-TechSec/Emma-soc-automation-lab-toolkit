@@ -216,7 +216,10 @@ def to_markdown(result: SuiteResult) -> str:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Score detections against simulated ground truth.")
+    ap = argparse.ArgumentParser(
+        prog="python -m soclab.detections.evaluation",
+        description="Score detections against simulated ground truth.",
+    )
     ap.add_argument("--seeds", type=int, default=50, help="number of simulated days")
     ap.add_argument("--rules", default="rules")
     ap.add_argument("--out", help="write the markdown report to this file")

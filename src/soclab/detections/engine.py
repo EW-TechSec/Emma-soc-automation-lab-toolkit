@@ -13,26 +13,28 @@ from __future__ import annotations
 
 import operator
 import re
-from collections import defaultdict, deque
-from collections.abc import Iterable
+from collections import Counter, defaultdict, deque
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from sigma.collection import SigmaCollection
 from sigma.correlations import (
-    SigmaCorrelationConditionOperator as Op,
-)
-from sigma.correlations import (
+    SigmaCorrelationCondition,
     SigmaCorrelationRule,
     SigmaCorrelationType,
+    SigmaExtendedCorrelationCondition,
+)
+from sigma.correlations import (
+    SigmaCorrelationConditionOperator as Op,
 )
 from sigma.rule import SigmaRule
 
 from soclab.attack import TACTICS
 from soclab.detections.matcher import RuleMatcher, UnsupportedRuleError
-from soclab.detections.models import Alert
+from soclab.detections.models import Alert, rule_key
 from soclab.schema import Event
 
 _OPS = {
@@ -74,6 +76,21 @@ def _tactics(rule: Rule) -> list[str]:
     return [t.name for t in rule.tags if t.namespace == "attack" and t.name in TACTICS]
 
 
+def load_rule_collection(rules_dir: str | Path) -> SigmaCollection:
+    """Load Sigma rules, refusing a missing or empty directory.
+
+    Zero rules means zero detection; reporting "0 alerts" in that case would look like a
+    clean bill of health when nothing was checked.
+    """
+    path = Path(rules_dir)
+    if not path.is_dir():
+        raise FileNotFoundError(f"Rules directory not found: {path}")
+    collection = SigmaCollection.load_ruleset([path])
+    if not collection.rules:
+        raise ValueError(f"No Sigma rules found in {path}")
+    return collection
+
+
 class DetectionEngine:
     def __init__(self, collection: SigmaCollection):
         collection.resolve_rule_references()
@@ -84,15 +101,19 @@ class DetectionEngine:
             if isinstance(rule, SigmaRule):
                 self._matchers[id(rule)] = RuleMatcher(rule)
             elif rule.type not in _SUPPORTED_CORRELATIONS:
-                raise UnsupportedRuleError(f"{rule.name}: correlation type {rule.type.name}")
+                raise UnsupportedRuleError(f"{rule_key(rule)}: correlation type {rule.type.name}")
+            elif isinstance(rule.condition, SigmaExtendedCorrelationCondition) or not rule.rules:
+                # e.g. "condition: a and not b". Evaluating it as plain temporal would invert
+                # its meaning without any error, so refuse it.
+                raise UnsupportedRuleError(f"{rule_key(rule)}: extended correlation condition")
 
     @classmethod
     def from_path(cls, rules_dir: str | Path) -> DetectionEngine:
-        return cls(SigmaCollection.load_ruleset([Path(rules_dir)]))
+        return cls(load_rule_collection(rules_dir))
 
     @property
     def alerting_rules(self) -> list[str]:
-        return sorted(r.name for r in self.rules if id(r) in self._output_ids)
+        return sorted(rule_key(r) for r in self.rules if id(r) in self._output_ids)
 
     # -- public API -------------------------------------------------------
 
@@ -127,7 +148,7 @@ class DetectionEngine:
             if id(rule) in seen or not isinstance(rule, SigmaCorrelationRule):
                 return
             seen.add(id(rule))
-            for ref in rule.rules:
+            for ref in rule.rules or []:
                 visit(ref.rule)
             ordered.append(rule)
 
@@ -138,7 +159,7 @@ class DetectionEngine:
     def _correlate(self, rule: SigmaCorrelationRule, hits: dict[int, list[_Hit]]) -> list[Alert]:
         group_by = list(rule.group_by or [])
         groups: dict[tuple, list[_Hit]] = defaultdict(list)
-        for index, ref in enumerate(rule.rules):
+        for index, ref in enumerate(rule.rules or []):
             for h in hits[id(ref.rule)]:
                 key = tuple(h.fields.get(f) for f in group_by)
                 if None in key:
@@ -156,30 +177,46 @@ class DetectionEngine:
                 results += self._windowed(rule, group_hits, window, group)
         return results
 
-    def _measure(self, rule: SigmaCorrelationRule, window: deque[_Hit]) -> int:
-        if rule.type == SigmaCorrelationType.EVENT_COUNT:
-            return len(window)
+    def _counted_value(self, rule: SigmaCorrelationRule) -> Callable[[_Hit], Any] | None:
+        """What a window tracks: None (event_count), a field value, or which rule matched."""
         if rule.type == SigmaCorrelationType.VALUE_COUNT:
-            f = rule.condition.fieldref
-            return len({h.fields.get(f) for h in window if h.fields.get(f) is not None})
-        return len({h.rule_index for h in window})  # TEMPORAL: how many distinct rules seen
+            # Extended conditions are rejected at load time, so this is a plain condition.
+            f = cast(str, cast(SigmaCorrelationCondition, rule.condition).fieldref)
+            return lambda h: h.fields.get(f)
+        if rule.type == SigmaCorrelationType.TEMPORAL:
+            return lambda h: h.rule_index
+        return None
 
     def _windowed(self, rule, group_hits, window: timedelta, group) -> list[Alert]:
-        """Sliding window. One alert per burst, extended while the condition keeps holding."""
+        """Sliding window. One alert per burst, extended while the condition keeps holding.
+
+        Distinct values are counted incrementally (+1 when a hit enters the window, -1 when
+        it leaves), so each hit costs O(1). Recounting the window per hit was O(n^2): a fast
+        scan of 10,000 packets took 2.4 s, and a noisy attacker could stall detection.
+        """
         if rule.type == SigmaCorrelationType.TEMPORAL:
-            check = lambda n: n == len(rule.rules)  # noqa: E731  every referenced rule seen
+            needed = len(rule.rules or [])
+            check = lambda n: n == needed  # noqa: E731  every referenced rule seen
         else:
             op, count = _OPS[rule.condition.op], rule.condition.count
             check = lambda n: op(n, count)  # noqa: E731
+        value_of = self._counted_value(rule)
 
         results: list[Alert] = []
         current: deque[_Hit] = deque()
+        tally: Counter[Any] = Counter()
         open_alert: Alert | None = None
         for h in group_hits:
             current.append(h)
+            if value_of and (v := value_of(h)) is not None:
+                tally[v] += 1
             while h.time - current[0].time > window:
-                current.popleft()
-            if not check(self._measure(rule, current)):
+                old = current.popleft()
+                if value_of and (v := value_of(old)) is not None:
+                    tally[v] -= 1
+                    if not tally[v]:
+                        del tally[v]
+            if not check(len(tally) if value_of else len(current)):
                 continue
             if open_alert and h.time - open_alert.last_seen <= window:
                 open_alert.events.extend(h.events)
@@ -228,7 +265,7 @@ class DetectionEngine:
         times = [e.timestamp for e in events] or [when]
         return Alert(
             rule_id=str(rule.id),
-            rule_name=rule.name,
+            rule_name=rule_key(rule),
             title=rule.title,
             level=rule.level.name.lower() if rule.level else "informational",
             techniques=_techniques(rule),

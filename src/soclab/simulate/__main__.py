@@ -6,7 +6,9 @@ from soclab.simulate.generator import generate, write_dataset
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Generate labelled SOC lab logs.")
+    ap = argparse.ArgumentParser(
+        prog="python -m soclab.simulate", description="Generate labelled SOC lab logs."
+    )
     ap.add_argument("--out", default="data/generated", help="output directory")
     ap.add_argument("--seed", type=int, default=42, help="same seed = same dataset")
     ap.add_argument("--hours", type=int, default=24)

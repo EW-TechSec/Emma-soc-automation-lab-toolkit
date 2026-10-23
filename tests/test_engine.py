@@ -170,7 +170,7 @@ def _matcher(detection: str) -> RuleMatcher:
             "  sel: {user.name: admin}\n  flt: {source.ip|cidr: 203.0.113.0/24}\n"
             "  condition: sel and not flt",
             False,
-        ),  # fmt: skip
+        ),
         ("  kw: [failure]\n  condition: kw", True),  # keyword searches the raw line
         ("  sel: {destination.ip: null}\n  condition: sel", True),  # field absent
     ],
@@ -193,3 +193,77 @@ def test_logsource_must_match():
 def test_unsupported_feature_fails_loudly():
     with pytest.raises(UnsupportedRuleError, match="SigmaFieldReference"):
         _matcher("  sel: {user.name|fieldref: host.name}\n  condition: sel")
+
+
+# ---- regressions found in the quality pass ------------------------------------------
+
+_BASE_PAIR = """
+title: Failed
+name: failed
+logsource: {product: linux, service: sshd}
+detection:
+  sel: {event.outcome: failure}
+  condition: sel
+---
+title: Success
+name: success
+logsource: {product: linux, service: sshd}
+detection:
+  sel: {event.outcome: success}
+  condition: sel
+---
+"""
+
+
+def test_rule_without_optional_name_is_handled():
+    # `name` is optional in Sigma and most community rules have none. This used to crash
+    # with TypeError when sorting rule names.
+    y = """
+title: Unnamed failed login
+id: 11111111-1111-4111-8111-111111111111
+logsource: {product: linux, service: sshd}
+detection:
+  sel: {event.outcome: failure}
+  condition: sel
+level: low
+"""
+    engine = DetectionEngine(SigmaCollection.from_yaml(y))
+    assert engine.alerting_rules == ["11111111-1111-4111-8111-111111111111"]
+    alerts = engine.run([ssh(0)])
+    assert alerts[0].rule_name == "11111111-1111-4111-8111-111111111111"
+
+
+def test_extended_correlation_condition_fails_loudly():
+    # "failed and not success" used to be accepted and evaluated as plain temporal,
+    # i.e. "failed and success": the opposite meaning, with no error.
+    y = (
+        _BASE_PAIR
+        + """title: Failures without success
+name: fail_no_success
+correlation:
+  type: temporal
+  rules: [failed, success]
+  group-by: [source.ip]
+  timespan: 5m
+  condition: failed and not success
+"""
+    )
+    with pytest.raises(UnsupportedRuleError, match="extended correlation condition"):
+        DetectionEngine(SigmaCollection.from_yaml(y))
+
+
+def test_unsupported_correlation_type_fails_loudly():
+    y = (
+        _BASE_PAIR
+        + """title: Sum
+name: sum
+correlation:
+  type: value_sum
+  rules: [failed]
+  group-by: [source.ip]
+  timespan: 5m
+  condition: {field: source.port, gte: 100}
+"""
+    )
+    with pytest.raises(UnsupportedRuleError, match="VALUE_SUM"):
+        DetectionEngine(SigmaCollection.from_yaml(y))

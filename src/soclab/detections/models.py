@@ -9,6 +9,12 @@ from typing import Any
 from soclab.schema import Event
 
 
+def rule_key(rule: Any) -> str:
+    """Stable handle for a rule. `name` is optional in Sigma (most community rules have
+    none), so fall back to the id, then the title."""
+    return rule.name or (str(rule.id) if rule.id else rule.title)
+
+
 @dataclass
 class Alert:
     rule_id: str
