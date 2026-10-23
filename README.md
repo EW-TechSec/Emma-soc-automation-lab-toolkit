@@ -39,6 +39,9 @@ pytest
 
 # generate a day of lab logs with planted attacks (port scan, SSH brute force, password spray)
 python -m soclab.simulate --out data/generated --seed 42
+
+# run every Sigma rule over those logs
+python -m soclab.detections --logs data/generated --year 2026
 ```
 
 No API keys are needed. Without them, enrichment replays recorded real API responses.
@@ -52,6 +55,11 @@ See [ADR 0001](docs/decisions/0001-live-vs-mock-threat-intel.md).
 | [SSH password spray](rules/linux/sshd/ssh_password_spray.yml) | value_count: 10+ distinct users from one source, 30 min | T1110.003 | high |
 | [Brute force then successful login](rules/linux/sshd/ssh_bruteforce_then_success.yml) | temporal_ordered: brute force, then success, 15 min | T1110.001, T1078 | critical |
 | [Port scan](rules/linux/firewall/port_scan.yml) | value_count: 20+ distinct blocked ports from one source, 5 min | T1046 | medium |
+
+Rules run in a small engine built on pySigma's parser
+([ADR 0003](docs/decisions/0003-detection-engine-on-pysigma.md)): sliding-window correlations,
+one alert per attack burst, and Sigma's `generate` semantics. On the generated lab day it raises
+4 alerts covering all 3 planted attacks, with no alerts from staff typos or internet noise.
 
 Every rule is checked in CI: valid Sigma (pySigma), references resolve, metadata complete,
 ATT&CK-tagged, and every field it uses exists in the event schema, so a typo cannot create
