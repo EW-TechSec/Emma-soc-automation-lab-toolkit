@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "soclab"
+version = "0.1.0"
+description = "Emma SOC Automation Lab: detection, enrichment, triage and response pipeline for SOC and threat-intel work"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "python-dotenv>=1.0",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "bandit[toml]>=1.7",
+    "responses>=0.25",  # mocks HTTP calls to threat-intel APIs in tests
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/soclab"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=soclab --cov-report=term-missing"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/F: errors, I: import order, B: likely bugs, S: security (bandit rules), UP: modern syntax
+select = ["E", "F", "I", "B", "S", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # assert is how pytest works
+
+[tool.bandit]
+exclude_dirs = ["tests"]
