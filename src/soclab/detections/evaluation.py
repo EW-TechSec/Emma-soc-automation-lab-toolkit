@@ -19,6 +19,7 @@ from pathlib import Path
 from statistics import median
 
 from soclab.detections.engine import DetectionEngine
+from soclab.detections.incidents import build_incidents
 from soclab.detections.models import Alert
 from soclab.ingest import parse_lines
 from soclab.simulate import GroundTruth, generate
@@ -121,12 +122,15 @@ class SuiteResult:
     seeds: list[int]
     rules: dict[str, RuleScore]
     scenarios: dict[str, list[int]]  # scenario -> [count, detected by all expected rules]
+    total_alerts: int = 0
+    total_incidents: int = 0
 
 
 def run_suite(seeds: list[int], rules_dir: str | Path = "rules", hours: int = 24) -> SuiteResult:
     engine = DetectionEngine.from_path(rules_dir)
     totals = {r: RuleScore(r) for r in engine.alerting_rules}
     scenarios: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    total_alerts = total_incidents = 0
 
     for seed in seeds:
         ds = generate(seed=seed, hours=hours, varied=True)
@@ -134,6 +138,8 @@ def run_suite(seeds: list[int], rules_dir: str | Path = "rules", hours: int = 24
         events = parse_lines([x for _, x in ds.auth_lines], "linux_auth", int(year or 2026)).events
         events += parse_lines([x for _, x in ds.ufw_lines], "ufw", int(year or 2026)).events
         alerts = engine.run(events)
+        total_alerts += len(alerts)
+        total_incidents += len(build_incidents(alerts))
         for name, s in score(alerts, ds.ground_truth, engine.alerting_rules).items():
             totals.setdefault(name, RuleScore(name)).add(s)
         for gt in ds.ground_truth:
@@ -150,7 +156,7 @@ def run_suite(seeds: list[int], rules_dir: str | Path = "rules", hours: int = 24
                 a.group.get("source.ip") == gt.source_ip and _overlaps(a, gt) for a in alerts
             )
             scenarios[label][1] += int(hit if want else not fired)
-    return SuiteResult(list(seeds), totals, dict(scenarios))
+    return SuiteResult(list(seeds), totals, dict(scenarios), total_alerts, total_incidents)
 
 
 def _pct(x: float | None) -> str:
@@ -180,6 +186,14 @@ def to_markdown(result: SuiteResult) -> str:
             f"| `{name}` | {s.alerts} | {s.true_alerts} | {s.false_alerts} | {s.attacks} | "
             f"{s.detected} | {_pct(s.precision)} | {_pct(s.recall)} | {ttd_txt} |"
         )
+    if result.total_incidents:
+        a, i = result.total_alerts, result.total_incidents
+        lines += [
+            "",
+            "## Alert grouping",
+            "",
+            f"{a} alerts were grouped into {i} incidents ({a / i:.2f} alerts per incident).",
+        ]
     lines += ["", "## Per scenario", "", "| Scenario | Occurrences | Handled correctly |",
               "|---|---|---|"]  # fmt: skip
     for label in sorted(result.scenarios):

@@ -21,6 +21,7 @@ SOC uses for an alert, from detection through to an incident report:
 | Detection engineering: Sigma v2 rules incl. correlations, MITRE ATT&CK mapping, CI-validated with pySigma | [`rules/`](rules/) |
 | Log parsing and normalization to Elastic Common Schema, log-injection-resistant parsing | `ingest/`, `schema.py` |
 | Labelled attack simulation (T1046, T1110.001, T1110.003) with benign noise | `simulate/` |
+| Alert grouping into incidents with ATT&CK timeline and severity escalation | `detections/incidents.py` |
 | Threat-intel enrichment (AbuseIPDB, VirusTotal, OTX), IOC handling, STIX 2.1 | `enrichment/`, `cti/` *(Phase 3)* |
 | Alert triage and risk-based prioritization | `triage/` *(Phase 3)* |
 | SOAR-style response playbooks with safe-by-default dry-run | `response/` *(Phase 4)* |
@@ -43,6 +44,9 @@ python -m soclab.simulate --out data/generated --seed 42
 # run every Sigma rule over those logs
 python -m soclab.detections --logs data/generated --year 2026
 
+# same, grouped into incidents with a timeline
+python -m soclab.detections --logs data/generated --year 2026 --incidents
+
 # score the rules against ground truth over 50 varied simulated days
 python -m soclab.detections.evaluation --seeds 50
 ```
@@ -63,6 +67,24 @@ Rules run in a small engine built on pySigma's parser
 ([ADR 0003](docs/decisions/0003-detection-engine-on-pysigma.md)): sliding-window correlations,
 one alert per attack burst, and Sigma's `generate` semantics. On the generated lab day it raises
 4 alerts covering all 3 planted attacks, with no alerts from staff typos or internet noise.
+
+### From alerts to incidents
+
+Alerts from the same attacker are grouped into one incident with a timeline, ATT&CK tactics
+and a severity ([ADR 0004](docs/decisions/0004-incident-grouping.md)). On the demo day:
+
+```
+4 alerts -> 3 incidents
+
+INC-20261020-0002  CRITICAL  attacker 203.0.113.66  COMPROMISED
+    hosts=['web01'] users=['admin'] tactics=['initial_access', 'credential_access']
+    09:20:24  ssh_bruteforce               credential_access  (60 events)
+    09:22:23  ssh_bruteforce_then_success  credential_access, initial_access  (61 events)
+    related: INC-20261020-0001 (same host, close in time)
+```
+
+The port scan on the same host from a different IP is linked as related, not merged:
+merging on weak evidence would hide separate attackers in one case.
 
 ### Measured detection quality
 

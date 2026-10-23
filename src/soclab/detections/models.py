@@ -21,6 +21,7 @@ class Alert:
     last_seen: datetime
     group: dict[str, Any] = field(default_factory=dict)  # e.g. {"source.ip": "203.0.113.66"}
     events: list[Event] = field(default_factory=list)  # evidence
+    tactics: list[str] = field(default_factory=list)  # ATT&CK tactics, e.g. ["credential_access"]
 
     @property
     def event_count(self) -> int:
@@ -32,6 +33,7 @@ class Alert:
             "rule_name": self.rule_name,
             "title": self.title,
             "level": self.level,
+            "tactics": self.tactics,
             "techniques": self.techniques,
             "timestamp": self.timestamp.isoformat(),
             "first_seen": self.first_seen.isoformat(),

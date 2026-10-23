@@ -30,6 +30,7 @@ from sigma.correlations import (
 )
 from sigma.rule import SigmaRule
 
+from soclab.attack import TACTICS
 from soclab.detections.matcher import RuleMatcher, UnsupportedRuleError
 from soclab.detections.models import Alert
 from soclab.schema import Event
@@ -67,6 +68,10 @@ def _techniques(rule: Rule) -> list[str]:
     return [
         t.name.upper() for t in rule.tags if t.namespace == "attack" and _TECHNIQUE.match(t.name)
     ]
+
+
+def _tactics(rule: Rule) -> list[str]:
+    return [t.name for t in rule.tags if t.namespace == "attack" and t.name in TACTICS]
 
 
 class DetectionEngine:
@@ -227,6 +232,7 @@ class DetectionEngine:
             title=rule.title,
             level=rule.level.name.lower() if rule.level else "informational",
             techniques=_techniques(rule),
+            tactics=_tactics(rule),
             timestamp=when,
             first_seen=min(times),
             last_seen=max(times),
